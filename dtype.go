@@ -157,13 +157,16 @@ func typeclassCheck(a Dtype, tc *typeclass) error {
 //		Complex128
 //
 // If a Dtype that is registered already exists on the list, it will not be added to the list.
-func RegisterNumber(a Dtype) {
+func RegisterNumber(a Dtype, constructor ConsFromInt) {
 	numberTypes.Lock()
 	defer numberTypes.Unlock()
 	for _, dt := range numberTypes.set {
 		if dt == a {
 			return
 		}
+	}
+	if constructor != nil {
+		fromInt[a] = constructor
 	}
 	numberTypes.set = append(numberTypes.set, a)
 	RegisterEq(a)
