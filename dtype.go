@@ -183,7 +183,7 @@ func RegisterFloat(a Dtype) {
 		}
 	}
 	floatTypes.set = append(floatTypes.set, a)
-	RegisterNumber(a)
+	RegisterNumber(a, nil)
 	RegisterOrd(a)
 }
 
