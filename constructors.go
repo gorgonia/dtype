@@ -10,7 +10,7 @@ import (
 type ConsFromInt func(int) interface{}
 
 // FromInt is a function to create a value of the given dtype from a given int.
-func FromInt(a Dtype, v int) (interface{}, error) {
+func FromInt(a Datatype, v int) (interface{}, error) {
 	fn, ok := fromInt[a]
 	if !ok {
 		return nil, errors.Errorf("No ConsFromInt constructor found to be registered for %v", a)
@@ -18,7 +18,7 @@ func FromInt(a Dtype, v int) (interface{}, error) {
 	return fn(v), nil
 }
 
-var fromInt = map[Dtype]ConsFromInt{
+var fromInt = map[Datatype]ConsFromInt{
 	Int:        intFromInt,
 	Int8:       int8FromInt,
 	Int16:      int16FromInt,

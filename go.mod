@@ -1,6 +1,6 @@
 module gorgonia.org/dtype
 
-go 1.16
+go 1.20
 
 require (
 	github.com/chewxy/hm v1.0.0

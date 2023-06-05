@@ -1,14 +1,13 @@
 package dtype
 
 import (
-	"reflect"
 	"testing"
 )
 
 type Float16 uint16
 
 func TestRegisterType(t *testing.T) {
-	dt := Dtype{reflect.TypeOf(Float16(0))}
+	dt := Dtype[Float16]{}
 	RegisterFloat(dt)
 
 	if err := typeclassCheck(dt, floatTypes); err != nil {
@@ -33,7 +32,7 @@ func TestDtypeConversions(t *testing.T) {
 			t.Errorf("Error: %v", err)
 		}
 	}
-	dt := Dtype{reflect.TypeOf(Float16(0))}
+	dt := Dtype[Float16]{}
 	if _, err := dt.NumpyDtype(); err == nil {
 		t.Errorf("Expected an error when passing in type unknown to np")
 	}
@@ -108,7 +107,7 @@ func TestFindByName(t *testing.T) {
 
 func TestRegisterFloat(t *testing.T) {
 	// this is a repeat test, to test repeated additions of a given dtype
-	dt := Dtype{reflect.TypeOf(Float16(0))}
+	dt := Dtype[Float16]{}
 	RegisterFloat(dt)
 	RegisterFloat(dt)
 
