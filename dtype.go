@@ -16,27 +16,27 @@ type readerInto interface {
 	Err() error
 }
 
-// Dtype represents a data type of a Tensor. Concretely it's implemented as an embedded reflect.Type
+// Datatype represents a data type of a Tensor. Concretely it's implemented as an embedded reflect.Type
 // which allows for easy reflection operations. It also implements hm.Type, for type inference in Gorgonia
-type Dtype[DT any] struct{}
+type Datatype[DT any] struct{}
 
-func (dt Dtype[DT]) Name() string                                  { var v DT; return reflect.TypeOf(v).Name() }
-func (dt Dtype[DT]) String() string                                { return dt.Name() }
-func (dt Dtype[DT]) Size() uintptr                                 { var v DT; return unsafe.Sizeof(v) }
-func (dt Dtype[DT]) Kind() reflect.Kind                            { var v DT; return reflect.TypeOf(v).Kind() }
-func (dt Dtype[DT]) Apply(hm.Subs) hm.Substitutable                { return dt }
-func (dt Dtype[DT]) FreeTypeVar() hm.TypeVarSet                    { return nil }
-func (dt Dtype[DT]) Normalize(k, v hm.TypeVarSet) (hm.Type, error) { return dt, nil }
-func (dt Dtype[DT]) Types() hm.Types                               { return nil }
-func (dt Dtype[DT]) Format(s fmt.State, c rune)                    { fmt.Fprintf(s, "%s", dt.Name()) }
-func (dt Dtype[DT]) Eq(other hm.Type) bool                         { return other == dt }
+func (dt Datatype[DT]) Name() string                                  { var v DT; return reflect.TypeOf(v).Name() }
+func (dt Datatype[DT]) String() string                                { return dt.Name() }
+func (dt Datatype[DT]) Size() uintptr                                 { var v DT; return unsafe.Sizeof(v) }
+func (dt Datatype[DT]) Kind() reflect.Kind                            { var v DT; return reflect.TypeOf(v).Kind() }
+func (dt Datatype[DT]) Apply(hm.Subs) hm.Substitutable                { return dt }
+func (dt Datatype[DT]) FreeTypeVar() hm.TypeVarSet                    { return nil }
+func (dt Datatype[DT]) Normalize(k, v hm.TypeVarSet) (hm.Type, error) { return dt, nil }
+func (dt Datatype[DT]) Types() hm.Types                               { return nil }
+func (dt Datatype[DT]) Format(s fmt.State, c rune)                    { fmt.Fprintf(s, "%s", dt.Name()) }
+func (dt Datatype[DT]) Eq(other hm.Type) bool                         { return other == dt }
 
 // SliceOf creates a slice of the given datatype with n elements.
 // This method when working using only interfaces (such as when serializing and unserializing data).
-func (dt Dtype[DT]) SliceOf(n int) any { return make([]DT, n) }
+func (dt Datatype[DT]) SliceOf(n int) any { return make([]DT, n) }
 
 // ReadIntoSlice is useful for reading values into `data`, which has to be a []DT. This method is mainly used for serialization and deserialization.
-func (dt Dtype[DT]) ReadIntoSlice(slice any, reader readerInto) {
+func (dt Datatype[DT]) ReadIntoSlice(slice any, reader readerInto) {
 
 	var v DT
 	switch any(v).(type) {
@@ -66,8 +66,8 @@ func (dt Dtype[DT]) ReadIntoSlice(slice any, reader readerInto) {
 
 }
 
-// Datatype is the type-erased version of a Dtype. One may also think of it as a .... type variable!
-type Datatype interface {
+// Dtype is the type-erased version of a Dtype. One may also think of it as a .... type variable!
+type Dtype interface {
 	hm.Type
 	Kind() reflect.Kind
 	Size() uintptr
@@ -82,11 +82,11 @@ type Datatype interface {
 	ReadIntoSlice(data any, reader readerInto)
 }
 
-var numpyDtypes map[Datatype]string
-var reverseNumpyDtypes map[string]Datatype
+var numpyDtypes map[Dtype]string
+var reverseNumpyDtypes map[string]Dtype
 
 func init() {
-	numpyDtypes = map[Datatype]string{
+	numpyDtypes = map[Dtype]string{
 		Bool:       "b1",
 		Int:        fmt.Sprintf("i%d", Int.Size()),
 		Int8:       "i1",
@@ -104,7 +104,7 @@ func init() {
 		Complex128: "c16",
 	}
 
-	reverseNumpyDtypes = map[string]Datatype{
+	reverseNumpyDtypes = map[string]Dtype{
 		"b1":  Bool,
 		"i1":  Int8,
 		"i2":  Int16,
@@ -123,7 +123,7 @@ func init() {
 
 // NumpyDtype returns the Numpy's Dtype equivalent. This is predominantly used in converting a Tensor to a Numpy ndarray,
 // however, not all Dtypes are supported
-func (dt Dtype[DT]) NumpyDtype() (string, error) {
+func (dt Datatype[DT]) NumpyDtype() (string, error) {
 	retVal, ok := numpyDtypes[dt]
 	if !ok {
 		return "v", errors.Errorf("Unsupported Dtype conversion to Numpy Dtype: %v", dt)
@@ -132,7 +132,7 @@ func (dt Dtype[DT]) NumpyDtype() (string, error) {
 }
 
 // FromNumpyDtype returns a Dtype given a string that matches Numpy's Dtype.
-func FromNumpyDtype(t string) (Datatype, error) {
+func FromNumpyDtype(t string) (Dtype, error) {
 	retVal, ok := reverseNumpyDtypes[t]
 	if !ok {
 		return nil, errors.Errorf("Unsupported Dtype conversion from %q to Dtype", t)
@@ -154,13 +154,13 @@ func FromNumpyDtype(t string) (Datatype, error) {
 
 type typeclass struct {
 	name string
-	set  []Datatype
+	set  []Dtype
 
 	sync.Mutex
 }
 
 // FindByName finds a given type by its name.
-func FindByName(name string) (Datatype, error) {
+func FindByName(name string) (Dtype, error) {
 	for _, dt := range allTypes.set {
 		if dt.String() == name {
 			return dt, nil
@@ -171,7 +171,7 @@ func FindByName(name string) (Datatype, error) {
 
 // TypeClassCheck checks if a given Dtype is in the given type class.
 // It returns nil if it is in the given type class.
-func TypeClassCheck(a Datatype, in TypeClass) error {
+func TypeClassCheck(a Dtype, in TypeClass) error {
 	if in >= maxtypeclass {
 		return errors.Errorf("Unknown/Unsupported typeclass to check")
 	}
@@ -182,7 +182,7 @@ func TypeClassCheck(a Datatype, in TypeClass) error {
 	return typeclassCheck(a, tc)
 }
 
-func typeclassCheck(a Datatype, tc *typeclass) error {
+func typeclassCheck(a Dtype, tc *typeclass) error {
 	if tc == nil {
 		return nil
 	}
@@ -215,7 +215,7 @@ func typeclassCheck(a Datatype, tc *typeclass) error {
 //	Complex128
 //
 // If a Dtype that is registered already exists on the list, it will not be added to the list.
-func RegisterNumber(a Datatype, constructor ConsFromInt) {
+func RegisterNumber(a Dtype, constructor ConsFromInt) {
 	numberTypes.Lock()
 	defer numberTypes.Unlock()
 	for _, dt := range numberTypes.set {
@@ -232,7 +232,7 @@ func RegisterNumber(a Datatype, constructor ConsFromInt) {
 
 // RegisterFloat registers a dtype as a type whose values are floating points.
 // This implies that NaN, +Inf and -Inf are also well as values in this type.
-func RegisterFloat(a Datatype) {
+func RegisterFloat(a Dtype) {
 	floatTypes.Lock()
 	defer floatTypes.Unlock()
 	for _, dt := range floatTypes.set {
@@ -246,7 +246,7 @@ func RegisterFloat(a Datatype) {
 }
 
 // RegisterOrd registers a dtype as a type whose values can be ordered.
-func RegisterOrd(a Datatype) {
+func RegisterOrd(a Dtype) {
 	ordTypes.Lock()
 	defer ordTypes.Unlock()
 	for _, dt := range ordTypes.set {
@@ -259,7 +259,7 @@ func RegisterOrd(a Datatype) {
 }
 
 // RegisterEq registers a dtype as a type whose values can be compared for equality.
-func RegisterEq(a Datatype) {
+func RegisterEq(a Dtype) {
 	eqTypes.Lock()
 	defer eqTypes.Unlock()
 	for _, dt := range eqTypes.set {
@@ -272,7 +272,7 @@ func RegisterEq(a Datatype) {
 }
 
 // Register registers a new Dtype into the registry.
-func Register(a Datatype) {
+func Register(a Dtype) {
 	allTypes.Lock()
 	defer allTypes.Unlock()
 	for _, dt := range allTypes.set {
@@ -284,7 +284,7 @@ func Register(a Datatype) {
 }
 
 // ID returns the ID of the Dtype in the registry.
-func ID(a Datatype) int {
+func ID(a Dtype) int {
 	allTypes.Lock()
 	defer allTypes.Unlock()
 	for i, v := range allTypes.set {
